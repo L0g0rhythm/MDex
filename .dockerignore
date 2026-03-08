@@ -19,6 +19,7 @@ htmlcov
 # Reports & Artifacts
 *.log
 *.txt
+!requirements.txt
 .coverage
 htmlcov
 .pytest_cache

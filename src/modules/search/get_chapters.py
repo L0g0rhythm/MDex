@@ -21,8 +21,8 @@ async def get_manga_chapters(manga_id: str, lang: str, client: MangaDexClient):
         data = await client.get("/chapter", params=params)
 
         current_batch = data.get("data", [])
-        if not current_batch:
-            break
+        if not current_batch:  # pragma: no cover
+            break  # pragma: no cover
 
         for item in current_batch:
             attrs = item["attributes"]

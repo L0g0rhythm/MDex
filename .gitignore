@@ -15,8 +15,19 @@ ui/.next/
 ui/out/
 ui/.vercel
 .npm
+# Reports & Artifacts
 *.log
 *.txt
+.coverage
+htmlcov/
+.pytest_cache/
+singularity_FINAL_REPORT_*.txt
+final_singularity_*.txt
+*.jpg
+*.pdf
+
+# Internal Context
+.gemini/
 
 # Tauri
 src-tauri/target/

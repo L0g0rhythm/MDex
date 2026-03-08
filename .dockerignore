@@ -1,0 +1,41 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.db
+db.sqlite3
+Downloads/*
+logs/*
+.env
+.coverage
+htmlcov
+.pytest_cache
+*.bak
+*.swp
+# Reports & Artifacts
+*.log
+*.txt
+.coverage
+htmlcov
+.pytest_cache
+*.bak
+*.swp
+*.jpg
+*.pdf
+singularity_FINAL_REPORT_*.txt
+final_singularity_*.txt
+
+# Internal Context
+.gemini
+
+# UI Build
+src/ui/node_modules
+src/ui/.next
+src/ui/out
+ui/node_modules
+ui/.next
+ui/out

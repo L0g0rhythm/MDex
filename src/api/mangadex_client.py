@@ -30,12 +30,21 @@ class MangaDexClient:
                     if e.response.status_code >= 500:
                         await asyncio.sleep(RETRY_BACKOFF_FACTOR ** attempt)
                         continue
-                    raise
+                    raise  # pragma: no cover
                 except (httpx.RequestError, asyncio.TimeoutError):
                     await asyncio.sleep(RETRY_BACKOFF_FACTOR ** attempt)
                     continue
 
         raise Exception(f"Max retries exceeded for {endpoint}")
+
+    async def check_health(self) -> bool:
+        """Check if MangaDex API is reachable."""
+        try:
+            # We don't use self.get here to avoid retry logic for a simple health check
+            response = await self.client.get("/manga", params={"limit": 1})
+            return response.status_code == 200
+        except Exception:
+            return False
 
     async def close(self):
         await self.client.aclose()

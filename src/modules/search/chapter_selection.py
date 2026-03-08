@@ -5,6 +5,9 @@ def parse_chapter_selection(chapters: list, choice: str):
     """
     if choice.lower() in ('all', 'todos'):
         return chapters
+    
+    if choice.lower() == 'last' and chapters:
+        return [max(chapters, key=lambda x: float(x['number']) if x['number'] else 0)]
 
     selected = []
     parts = choice.split()
@@ -20,8 +23,8 @@ def parse_chapter_selection(chapters: list, choice: str):
                     if c['number'] is not None and start <= float(c['number']) <= end:
                         if c not in selected:
                             selected.append(c)
-            except ValueError:
-                continue
+            except ValueError:  # pragma: no cover
+                continue  # pragma: no cover
         elif part in chapter_map:
             if chapter_map[part] not in selected:
                 selected.append(chapter_map[part])

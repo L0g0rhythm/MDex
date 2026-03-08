@@ -11,19 +11,19 @@ class BaseProvider(ABC):
     @abstractmethod
     async def search(self, query: str) -> List[Dict[str, Any]]:
         """Search for manga and return a list of matches."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     async def get_chapters(self, manga_id: str, languages: List[str]) -> List[Dict[str, Any]]:
         """Retrieve all chapters for specific languages."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     async def get_pages(self, chapter_id: str) -> List[str]:
         """Get all image URLs for a specific chapter."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     async def close(self):
         """Close any open connections or clients."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover

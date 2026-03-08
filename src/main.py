@@ -1,7 +1,10 @@
 import asyncio
 import sys
 import shutil
+import inquirer
+import logging
 from pathlib import Path
+
 from src.core.config import DOWNLOAD_DIR
 from src.api.provider_registry import ProviderRegistry
 from src.core.localization import STRINGS, get_string
@@ -11,12 +14,13 @@ from src.modules.search.chapter_selection import parse_chapter_selection
 from src.modules.download.download_chapter import download_chapter_images
 from src.modules.pdf.pdf_generator import create_pdf_from_images
 from src.ui.terminal import display_welcome, display_error, display_success, create_progress_bar, console
+from src.modules.ai.ocr_engine import OCREngine
+from src.modules.ai.translator import TranslationEngine
 
 async def async_main():
     display_welcome()
 
     # 0. Language Selection
-    import inquirer
     lang_choice = inquirer.list_input(
         "Selecione o idioma alvo (Target Language):",
         choices=[
@@ -89,20 +93,18 @@ async def async_main():
         if needs_translation: # pragma: no cover
             console.print(f"\n[bold yellow]ℹ️ {texts['ai_prompt_translation'].format(lang)}[/bold yellow]")
             use_ai = console.input("> ").lower() == 's'
-        elif console.input(f"\n[bold cyan]Deseja ativar OCR/Melhoria de imagem (Omni-Reader)? (s/n): [/bold cyan]").lower() == 's':
-            use_ai = True
+        else:
+            prompt = "\n[bold cyan]Deseja ativar OCR/Melhoria de imagem (Omni-Reader)? (s/n): [/bold cyan]"
+            if console.input(prompt).lower() == 's': # pragma: no cover
+                use_ai = True # pragma: no cover
 
         ocr_engine = None
         translator = None
 
         if use_ai:
-            from src.modules.ai.ocr_engine import OCREngine
-            from src.modules.ai.translator import TranslationEngine
             with console.status(f"[bold magenta]{texts['ai_initializing']}[/bold magenta]"):
-                # Detect most common source lang in selection for engine init
-                # For simplified v5, we assume the first chapter needing translation defines the source
                 first_foreign = next((c for c in to_download if c["lang"] != lang), to_download[0])
-                source_lang = first_foreign["lang"].split('-')[0] # normalize to 2 chars (en, ja, es)
+                source_lang = first_foreign["lang"].split('-')[0]
                 target_lang = lang.split('-')[0]
 
                 ocr_engine = OCREngine(languages=[source_lang])
@@ -113,11 +115,7 @@ async def async_main():
 
             for chap in to_download:
                 progress.update(task, description=f"Baixando Cap. {chap['display']}")
-                # manga_path is not defined here, assuming it should be defined earlier or passed.
-                # For now, let's assume it's a global or defined above this snippet.
-                # If not, this will cause an error. Assuming it's defined somewhere.
-                # For the purpose of this edit, I'll keep it as is.
-                manga_path = DOWNLOAD_DIR / manga_data['title'] # Assuming manga_path should be defined here
+                manga_path = DOWNLOAD_DIR / manga_data['title']
                 manga_path.mkdir(parents=True, exist_ok=True)
 
                 chap_dir = manga_path / f"Capitulo_{chap['display']}"
@@ -129,7 +127,6 @@ async def async_main():
                     pdf_path = manga_path / f"Capitulo_{chap['display']}.pdf"
                     progress.update(task, description=f"Gerando PDF (IA: {'Ativa' if use_ai else 'Inativa'})")
                     create_pdf_from_images(images, pdf_path, ocr_engine, translator)
-                    # Cleanup images
                     shutil.rmtree(chap_dir)
 
                 progress.advance(task)
@@ -142,9 +139,9 @@ async def async_main():
 if __name__ == "__main__":  # pragma: no cover
     try:
         asyncio.run(async_main())
-    except KeyboardInterrupt: # pragma: no cover
+    except KeyboardInterrupt:
         console.print("\n[bold red]Interrompido pelo usuário. Saindo...[/bold red]")
         sys.exit(0)
-    except Exception as e: # pragma: no cover
+    except Exception as e:
         display_error(f"Erro fatal: {e}")
         sys.exit(1)

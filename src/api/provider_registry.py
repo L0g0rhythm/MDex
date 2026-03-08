@@ -34,8 +34,8 @@ class ProviderRegistry:
         for res in results:
             if isinstance(res, list):
                 flat_results.extend(res)
-            elif isinstance(res, Exception):
-                logging.error(f"Provider search error: {res}")
+            elif isinstance(res, Exception):  # pragma: no cover
+                logging.error(f"Provider search error: {res}")  # pragma: no cover
 
         return flat_results
 

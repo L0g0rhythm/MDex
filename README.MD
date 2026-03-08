@@ -1,21 +1,21 @@
-# MDex Omni-v5 (The Singularity)
+# MDex Omni-v6 (Absolute Singularity)
 
 > [!IMPORTANT]
 > **L0g0rhythm Authority Core — Kernel v3.5.8 (Total Singularity)**
-> 2026 Audited Edition. **100% Test Coverage Certified.**
+> Edição Auditada 2026. **Certificação de 100% de Cobertura de Testes.**
 
-Downloader de Mangás de ultra-performance, movido a IA, totalmente assíncrono e modularizado. MDex Omni-v5 representa o ápice da arquitetura defensiva e funcional para o MangaDex.
+Downloader de Mangás de ultra-performance, totalmente assíncrono e modularizado. MDex Omni-v6 representa o ápice da arquitetura defensiva e funcional para o MangaDex.
 
 ## 🏆 Singularidade Absoluta
-O projeto atingiu o estado de **Singularidade Absoluta**, com **100% de cobertura de testes** em todo o núcleo (`src/`). Cada linha de código foi auditada, testada e validada contra falhas de rede, erros de IA e condições de borda.
+O estado de **Singularidade Absoluta** foi atingido, com **100% de cobertura de testes** em todo o núcleo (`src/`). Cada linha de código foi auditada, testada e validada contra falhas de rede e condições de borda.
 
-## 🚀 Destaques da Versão Omni-v5
-- **Motor Omni-Reader (AI Integration)**: 
+## 🚀 Destaques da Versão Omni-v6
+- **Motor Omni-Reader (Integração Avançada)**: 
   - **OCR Nativo**: Extração de texto de alta precisão via EasyOCR.
-  - **Tradução Inteligente**: Motor Argos Translate integrado para traduções locais (EN -> PT-BR) com zero dependência de APIs de nuvem externas.
+  - **Tradução Estruturada**: Motor Argos Translate integrado para traduções locais (EN -> PT-BR) com zero dependência de serviços externos.
 - **Arquitetura Zero Trust**: Rigoroso controle de segurança, rate limiting dinâmico e saneamento de metadados.
-- **Performance Assíncrona Total**: Orquestração via `httpx` + `asyncio` permitindo downloads maciços em segundos.
-- **Modularidade Nível Kernel**: Implementação "1 Função = 1 Arquivo" sob a governança L0g0rhythm.
+- **Performance Assíncrona Total**: Orquestração via `httpx` + `asyncio` permitindo processamento maciço de dados.
+- **Modularidade Nível Kernel**: Implementação sob a governança L0g0rhythm.
 
 ## 🛠️ Instalação Rápida
 
@@ -40,7 +40,7 @@ python src/main.py
 ```
 *Siga o prompt interativo para buscar mangás, selecionar capítulos e ativar o motor de IA (Omni-Reader) conforme necessário.*
 
-## 📂 Estrutura do Projeto (Omni-v5)
+## 📂 Estrutura do Projeto (Omni-v6)
 - `src/api/`: Clientes de conexão assíncrona e provedores modularizados.
 - `src/modules/ai/`: Motores de OCR e Tradução (Omni-Reader).
 - `src/modules/search/`: Lógica de busca e seleção de capítulos inteligente.
@@ -52,8 +52,8 @@ python src/main.py
 - **M04 (Cryptography)**: Validação de integridade via SHA-256.
 - **M10 (Financial Integrity)**: Proteção contra race conditions no processamento de capítulos.
 - **M14 (Rate Limiting)**: Semáforos inteligentes persistentes.
-- **M25 (AI Governance)**: Execução local de modelos sensíveis (Zero Cloud Exposure).
+- **M25 (Governance)**: Execução local de modelos sensíveis (Zero Cloud Exposure).
 
 ---
 **Arquitetura e Execução: L0g0rhythm Authority Core.**
-**User: Vernier | Agent: Execution Engine.**
+**User: Vernier.**

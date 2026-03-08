@@ -1,32 +1,82 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --accent: #00bcd4;
-  --glass: rgba(255, 255, 255, 0.05);
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 10, 10, 15;
+  --background-end-rgb: 0, 0, 0;
+  
+  --accent-cyan: #00f2ff;
+  --accent-pink: #ff00cc;
+  --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  min-height: 100vh;
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
 }
 
+/* Glassmorphism utility */
 .glass {
-  background: var(--glass);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
-.gradient-text {
-  background: linear-gradient(135deg, #00bcd4 0%, #ff4081 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.glass-active {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+}
+
+/* Neon Text */
+.neon-cyan {
+  text-shadow: 0 0 10px var(--accent-cyan), 0 0 20px var(--accent-cyan);
+}
+
+.neon-pink {
+  text-shadow: 0 0 10px var(--accent-pink), 0 0 20px var(--accent-pink);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-cyan);
+  border-radius: 10px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes pulse-neon {
+  0% { box-shadow: 0 0 5px var(--accent-cyan); }
+  50% { box-shadow: 0 0 20px var(--accent-cyan); }
+  100% { box-shadow: 0 0 5px var(--accent-cyan); }
+}
+
+.pulse-neon {
+  animation: pulse-neon 2s infinite;
 }

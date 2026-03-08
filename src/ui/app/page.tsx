@@ -1,236 +1,274 @@
-"use client";
+'use client'
 
-import React, { useEffect, useState } from "react";
-
-interface MangaResult {
-    id: string;
-    title: string;
-    provider: string;
-}
-
-interface Chapter {
-    id: string;
-    number: string;
-    title?: string;
-    lang: string;
-    provider: string;
-}
+import { useState, useEffect, useRef } from 'react'
+import { Search, Download, BookOpen, CheckCircle2, AlertCircle, Loader2, ChevronRight, LayoutGrid } from 'lucide-react'
 
 export default function Home() {
-    const [query, setQuery] = useState("");
-    const [results, setResults] = useState<MangaResult[]>([]);
-    const [selectedManga, setSelectedManga] = useState<MangaResult | null>(null);
-    const [chapters, setChapters] = useState<Chapter[]>([]);
-    const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
-    const [progress, setProgress] = useState<Record<string, { percent: number; status: string }>>({});
-    const [loading, setLoading] = useState(false);
-    const [loadingChapters, setLoadingChapters] = useState(false);
-    const [mounted, setMounted] = useState(false);
+  const [query, setQuery] = useState('')
+  const [mangas, setMangas] = useState<any[]>([])
+  const [selectedManga, setSelectedManga] = useState<any>(null)
+  const [chapters, setChapters] = useState<any[]>([])
+  const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState<{ [key: string]: number }>({})
+  const [logs, setLogs] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  
+  const ws = useRef<WebSocket | null>(null)
 
-    useEffect(() => {
-        setMounted(true);
+  useEffect(() => {
+    connectWS()
+    return () => ws.current?.close()
+  }, [])
 
-        // Module 22: Universal WebSocket Bridge
-        const ws = new WebSocket("ws://localhost:8000/ws");
+  const connectWS = () => {
+    const socket = new WebSocket('ws://localhost:8000/api/v1/ws/progress')
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.type === 'progress') {
+        setProgress(prev => ({ ...prev, [data.chapter_id]: data.percentage }))
+      } else if (data.type === 'log') {
+        setLogs(prev => [data.message, ...prev].slice(0, 50))
+      }
+    }
+    socket.onclose = () => setTimeout(connectWS, 3000)
+    ws.current = socket
+  }
 
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "progress") {
-                setProgress(prev => ({
-                    ...prev,
-                    [data.chapter_id]: { percent: data.progress, status: data.status }
-                }));
-            }
-        };
+  const searchManga = async () => {
+    if (!query) return
+    setLoading(true)
+    setError(null)
+    setMangas([])
+    setSelectedManga(null)
+    setChapters([])
+    
+    try {
+      const resp = await fetch(`http://localhost:8000/api/v1/manga/search?title=${encodeURIComponent(query)}`)
+      const data = await resp.json()
+      if (data.error) throw new Error(data.error)
+      setMangas(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-        return () => ws.close();
-    }, []);
+  const getChapters = async (manga: any) => {
+    setSelectedManga(manga)
+    setLoading(true)
+    setChapters([])
+    try {
+      const resp = await fetch(`http://localhost:8000/api/v1/manga/${manga.id}/chapters`)
+      const data = await resp.json()
+      setChapters(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!query) return;
-        setLoading(true);
-        try {
-            const resp = await fetch(`http://localhost:8000/search/all?q=${encodeURIComponent(query)}`);
-            const data = await resp.json();
-            setResults(data);
-        } catch (err) {
-            console.error("Failed to fetch search results:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const startDownload = async () => {
+    if (selectedChapterIds.length === 0) return
+    setError(null)
+    setSuccess(null)
+    try {
+      const resp = await fetch('http://localhost:8000/api/v1/download/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manga_id: selectedManga.id,
+          chapter_ids: selectedChapterIds
+        })
+      })
+      const data = await resp.json()
+      setSuccess(data.message)
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
 
-    const selectManga = async (manga: MangaResult) => {
-        setSelectedManga(manga);
-        setLoadingChapters(true);
-        setSelectedChapters(new Set());
-        setProgress({});
-        try {
-            const resp = await fetch(`http://localhost:8000/chapters?manga_id=${manga.id}&provider=${manga.provider}`);
-            const data = await resp.json();
-            setChapters(data);
-        } catch (err) {
-            console.error("Failed to fetch chapters:", err);
-        } finally {
-            setLoadingChapters(false);
-        }
-    };
-
-    const toggleChapter = (id: string) => {
-        const next = new Set(selectedChapters);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        setSelectedChapters(next);
-    };
-
-    const handleDownload = async () => {
-        if (selectedChapters.size === 0 || !selectedManga) return;
-        const ids = Array.from(selectedChapters).join(",");
-        try {
-            await fetch(`http://localhost:8000/download?manga_id=${selectedManga.id}&provider=${selectedManga.provider}&chapter_ids=${ids}`);
-        } catch (err) {
-            console.error("Download failed:", err);
-        }
-    };
-
-    if (!mounted) return null;
-
-    return (
-        <div className="flex flex-col items-center min-h-screen p-6 md:p-12 overflow-y-auto">
-            {/* Background Decorative Element */}
-            <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,188,212,0.1),transparent_70%)] pointer-events-none" />
-
-            <header className="w-full max-w-5xl flex justify-between items-center mb-16 relative">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-pink-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                        <span className="font-bold text-white">M</span>
-                    </div>
-                    <h1 className="text-2xl font-bold tracking-tight">MDex <span className="gradient-text">Singularity</span></h1>
-                </div>
-                <div className="flex gap-4">
-                    <span className="px-3 py-1 glass text-[10px] uppercase tracking-widest text-zinc-400">Kernel v3.5</span>
-                    <span className="px-3 py-1 glass text-[10px] uppercase tracking-widest text-cyan-400">Apex Mode</span>
-                </div>
-            </header>
-
-            <main className="w-full max-w-4xl space-y-12 relative flex-grow">
-                {/* Search Section */}
-                <section className="space-y-6">
-                    <div className="text-center space-y-2">
-                        <h2 className="text-4xl font-bold tracking-tight">Explore a Imensidão</h2>
-                        <p className="text-zinc-500">Busca universal multi-provedor com tradução inteligente.</p>
-                    </div>
-
-                    <form onSubmit={handleSearch} className="relative group max-w-2xl mx-auto">
-                        <input
-                            type="text"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Digite o título do mangá..."
-                            className="w-full h-14 bg-zinc-900/50 border border-zinc-800 focus:border-cyan-500/50 rounded-2xl px-6 outline-none transition-all placeholder:text-zinc-600 glass"
-                        />
-                        <button
-                            disabled={loading}
-                            className="absolute right-2 top-2 h-10 px-6 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 transition-all rounded-xl font-semibold text-sm shadow-xl shadow-cyan-900/10"
-                        >
-                            {loading ? "Buscando..." : "Pesquisar"}
-                        </button>
-                    </form>
-                </section>
-
-                {/* Results Section */}
-                {!selectedManga ? (
-                    <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {results.map((m) => (
-                            <div
-                                key={m.id}
-                                onClick={() => selectManga(m)}
-                                className="glass p-6 group hover:border-cyan-500/30 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4"
-                            >
-                                <div className="mb-4 aspect-[3/4] rounded-lg bg-zinc-800/50 flex items-center justify-center overflow-hidden relative">
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                                    <span className="text-sm font-medium text-zinc-500">Sem Capa</span>
-                                    <div className="absolute top-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-[10px] uppercase tracking-wider border border-white/5 text-cyan-400">
-                                        {m.provider}
-                                    </div>
-                                </div>
-                                <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-cyan-400 transition-colors uppercase tracking-tight">{m.title}</h3>
-                                <p className="text-xs text-zinc-500 mt-1 uppercase tracking-tighter">ID: {m.id.substring(0, 8)}...</p>
-                            </div>
-                        ))}
-
-                        {!loading && query && results.length === 0 && (
-                            <div className="col-span-full py-12 text-center text-zinc-600">
-                                Nenhum resultado encontrado.
-                            </div>
-                        )}
-                    </section>
-                ) : (
-                    /* Chapter Selection Section */
-                    <section className="animate-in fade-in slide-in-from-right-8 space-y-6 pb-12">
-                        <button onClick={() => setSelectedManga(null)} className="text-zinc-500 hover:text-white flex items-center gap-2 text-sm transition-colors">
-                            <span>← Voltar para busca</span>
-                        </button>
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <h2 className="text-3xl font-bold">{selectedManga.title}</h2>
-                                <p className="text-cyan-400 text-sm uppercase tracking-widest">{selectedManga.provider}</p>
-                            </div>
-                            <button
-                                onClick={handleDownload}
-                                disabled={selectedChapters.size === 0}
-                                className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-pink-600 rounded-xl font-bold text-sm shadow-xl shadow-cyan-900/20 active:scale-95 transition-all disabled:opacity-50"
-                            >
-                                Download ({selectedChapters.size})
-                            </button>
-                        </div>
-
-                        <div className="glass max-h-[500px] overflow-y-auto divide-y divide-white/5">
-                            {loadingChapters ? (
-                                <div className="p-12 text-center text-zinc-500 animate-pulse uppercase tracking-[0.2em] text-[10px]">Carregando capítulos...</div>
-                            ) : (
-                                chapters.map((c) => (
-                                    <div key={c.id} className="p-4 flex flex-col gap-2 hover:bg-white/5 transition-colors group">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-4">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedChapters.has(c.id)}
-                                                    onChange={() => toggleChapter(c.id)}
-                                                    className="w-5 h-5 rounded-lg border-zinc-700 bg-zinc-900 text-cyan-600 focus:ring-cyan-500/50 cursor-pointer"
-                                                />
-                                                <div>
-                                                    <span className="text-sm font-semibold text-zinc-200">Capítulo {c.number}</span>
-                                                    {c.title && <span className="text-zinc-500 text-xs ml-2 italic">— {c.title}</span>}
-                                                </div>
-                                            </div>
-                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${c.lang === 'en' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}>
-                                                {c.lang}
-                                            </span>
-                                        </div>
-                                        {progress[c.id] && (
-                                            <div className="pl-9 space-y-1 animate-in fade-in zoom-in duration-300">
-                                                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-cyan-500 to-pink-500 transition-all duration-500"
-                                                        style={{ width: `${progress[c.id].percent}%` }}
-                                                    />
-                                                </div>
-                                                <p className="text-[10px] text-zinc-500 uppercase tracking-tighter">{progress[c.id].status}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
-                )}
-            </main>
-
-            <footer className="mt-auto py-12 text-[10px] text-zinc-700 uppercase tracking-[0.2em]">
-                Design by L0g0rhythm | Built for the Singularity
-            </footer>
+  return (
+    <main className="min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <header className="flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-in">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 glass rounded-xl flex items-center justify-center pulse-neon">
+            <LayoutGrid className="text-[#00f2ff] w-6 h-6" />
+          </div>
+          <h1 className="text-4xl font-black tracking-tighter neon-cyan">MDEX <span className="text-[#ff00cc]">SINGULARITY</span></h1>
         </div>
-    );
+        
+        <div className="relative w-full md:w-96 group">
+          <input 
+            type="text" 
+            placeholder="Search manga..." 
+            className="w-full h-12 pl-12 pr-4 glass rounded-full focus:outline-none focus:ring-2 focus:ring-[#00f2ff] transition-all"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && searchManga()}
+          />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-[#00f2ff] transition-colors" size={20} />
+          <button 
+            onClick={searchManga}
+            disabled={loading}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#00f2ff] text-black px-4 py-1.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all"
+          >
+            {loading ? <Loader2 className="animate-spin" size={16} /> : 'SEARCH'}
+          </button>
+        </div>
+      </header>
+
+      {/* Notifications */}
+      <div className="space-y-4">
+        {error && (
+          <div className="glass border-l-4 border-red-500 p-4 flex items-center gap-3 animate-fade-in">
+            <AlertCircle className="text-red-500" />
+            <span className="text-red-200">{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="glass border-l-4 border-[#00f2ff] p-4 flex items-center gap-3 animate-fade-in">
+            <CheckCircle2 className="text-[#00f2ff]" />
+            <span className="text-cyan-100">{success}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Results/Chapters */}
+        <div className="lg:col-span-8 space-y-6">
+          {!selectedManga ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mangas.map((manga, i) => (
+                <div 
+                  key={manga.id} 
+                  className="glass group cursor-pointer hover:glass-active transition-all p-4 rounded-2xl flex flex-col gap-4 animate-fade-in"
+                  style={{ animationDelay: `${i * 0.05}s` }}
+                  onClick={() => getChapters(manga)}
+                >
+                  <div className="aspect-[3/4] rounded-lg overflow-hidden relative">
+                    <img 
+                      src={manga.cover || '/placeholder.png'} 
+                      alt={manga.title} 
+                      className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-3">
+                      <p className="font-bold text-sm line-clamp-2">{manga.title}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="glass rounded-3xl p-6 space-y-6 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <button 
+                  onClick={() => setSelectedManga(null)}
+                  className="text-sm text-gray-400 hover:text-[#00f2ff] flex items-center gap-1"
+                >
+                  <ChevronRight className="rotate-180" size={16} /> Back to results
+                </button>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-400">{selectedChapterIds.length} selected</span>
+                  <button 
+                    onClick={startDownload}
+                    className="bg-[#ff00cc] text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,0,204,0.4)]"
+                  >
+                    <Download size={18} /> DOWNLOAD
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-6 items-start">
+                <img src={selectedManga.cover} className="w-32 h-44 object-cover rounded-xl shadow-2xl" alt="" />
+                <div>
+                  <h2 className="text-2xl font-bold neon-cyan mb-2">{selectedManga.title}</h2>
+                  <p className="text-gray-400 text-sm line-clamp-4">{selectedManga.description}</p>
+                </div>
+              </div>
+
+              <div className="max-h-[500px] overflow-y-auto pr-2 space-y-2">
+                {chapters.map((chap) => (
+                  <label 
+                    key={chap.id} 
+                    className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${
+                      selectedChapterIds.includes(chap.id) ? 'bg-[#00f2ff]/10 border border-[#00f2ff]/30' : 'hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="checkbox" 
+                        className="w-5 h-5 accent-[#00f2ff]"
+                        checked={selectedChapterIds.includes(chap.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedChapterIds(prev => [...prev, chap.id])
+                          else setSelectedChapterIds(prev => prev.filter(id => id !== chap.id))
+                        }}
+                      />
+                      <div>
+                        <p className="font-bold">Chapter {chap.chapter}</p>
+                        <p className="text-xs text-gray-400">{chap.title || 'No Title'}</p>
+                      </div>
+                    </div>
+                    {progress[chap.id] !== undefined && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[#00f2ff] transition-all duration-300" 
+                            style={{ width: `${progress[chap.id]}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono">{progress[chap.id]}%</span>
+                      </div>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Console/Status */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="glass rounded-3xl p-6 h-[400px] flex flex-col animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <BookOpen className="text-[#ff00cc]" size={18} />
+              <h3 className="font-bold tracking-widest text-xs uppercase">Kernel Log</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto font-mono text-[10px] space-y-1 pr-2">
+              {logs.length === 0 && <p className="text-gray-600">Waiting for activity...</p>}
+              {logs.map((log, i) => (
+                <p key={i} className="text-cyan-100 flex gap-2">
+                  <span className="text-[#ff00cc]">{`>`}</span>
+                  {log}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass rounded-3xl p-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+             <h3 className="font-bold tracking-widest text-xs uppercase mb-4 opacity-50">Sovereignty Status</h3>
+             <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-400">Security Layer</span>
+                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/30">ENFORCED</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-400">Data Integrity</span>
+                  <span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-500/30">VERIFIED</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-400">M08 Retention</span>
+                  <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/30">ROTATING</span>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  )
 }

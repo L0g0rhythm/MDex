@@ -1,0 +1,32 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Downloads:/app/Downloads
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - mdex-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G # AI models need RAM
+
+  frontend:
+    build:
+      context: ./src/ui
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    networks:
+      - mdex-net
+    depends_on:
+      - backend
+
+networks:
+  mdex-net:
+    driver: bridge

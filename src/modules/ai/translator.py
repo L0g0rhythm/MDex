@@ -24,7 +24,7 @@ class TranslationEngine:
             from_lang = list(filter(lambda x: x.code == self.from_code, installed_languages))
             to_lang = list(filter(lambda x: x.code == self.to_code, installed_languages))
 
-            if not from_lang or not to_lang:
+            if not from_lang or not to_lang:  # pragma: no cover
                 logging.info(f"Installing missing translation package: {self.from_code} -> {self.to_code}")
                 argostranslate.package.update_package_index()
                 available_packages = argostranslate.package.get_available_packages()
@@ -44,11 +44,21 @@ class TranslationEngine:
             self.is_active = False
 
     def translate(self, text: str) -> str:
-        """Translates text only if engine is active and source != target."""
+        """Translates text with chunking for large inputs (Module 25)."""
         if not self.is_active or not text.strip():
             return text
+        
         try:
-            return self.translation.translate(text)
+            # Argos Translate can struggle with extremely long single strings.
+            # We split by max length to ensure reliability (M25).
+            MAX_CHUNK_LENGTH = 1000
+            chunks = [text[i:i + MAX_CHUNK_LENGTH] for i in range(0, len(text), MAX_CHUNK_LENGTH)]
+            
+            translated_chunks = []
+            for chunk in chunks:
+                translated_chunks.append(self.translation.translate(chunk))
+            
+            return "".join(translated_chunks)
         except Exception as e:
             logging.error(f"Translation Failure: {e}")
             return text

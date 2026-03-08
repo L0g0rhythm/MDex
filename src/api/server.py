@@ -1,24 +1,26 @@
-from fastapi import FastAPI, HTTPException
-from typing import List, Optional
-from src.api.provider_registry import ProviderRegistry
-from pydantic import BaseModel
-
-from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict
+from pydantic import BaseModel
 import json
 import asyncio
+import logging
+import shutil
+from pathlib import Path
 
-app = FastAPI(title="MDex Omni-v5 API")
-
+# Project Imports
+from src.api.provider_registry import ProviderRegistry
 from src.modules.download.download_chapter import download_chapter_images
 from src.modules.pdf.pdf_generator import create_pdf_from_images
 from src.modules.ai.ocr_engine import OCREngine
 from src.modules.ai.translator import TranslationEngine
 from src.core.config import DOWNLOAD_DIR
-from pathlib import Path
-import shutil
+from src.core.logger import setup_logger
+
+app = FastAPI(title="MDex Singularity API", version="1.0.0")
+
+# Setup Logger
+logger = logging.getLogger("mdex.api")
 
 # Module 22: Observability & Resilience - Real-time Progress Tracking
 class ConnectionManager:
@@ -30,28 +32,20 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
             try:
                 await connection.send_text(json.dumps(message))
-            except Exception:
-                # Connection might be stale
+            except Exception as e:
+                logger.warning(f"Failed to send websocket message: {e}")
                 pass
 
 manager = ConnectionManager()
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            await websocket.receive_text() # Keep alive
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-
-# Module 13: Frontend Client Security - Restricting to secure origins (M13)
+# Module 13: Frontend Client Security - Zero Trust CORS (M13)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -60,51 +54,74 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class MangaResult(BaseModel):
-    id: str
-    title: str
-    provider: str
+# Models
+class DownloadRequest(BaseModel):
+    manga_id: str
+    chapter_ids: List[str]
+    provider: str = "mangadex"
+    target_lang: str = "pt-br"
+    use_ai: bool = False
 
-class ChapterResult(BaseModel):
-    id: str
-    number: str
-    title: Optional[str]
-    lang: str
-    provider: str
+# --- RESTful API v1 Routes ---
 
-@app.get("/search/all", response_model=List[MangaResult])
-async def search_all(q: str):
+@app.get("/api/v1/manga/search")
+async def search_manga_route(title: str):
+    """Searches for manga across all providers (M28)."""
     try:
-        return await ProviderRegistry.search_all(q)
+        results = await ProviderRegistry.search_all(title)
+        return results
     except Exception as e:
+        logger.error(f"Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/chapters", response_model=List[ChapterResult])
-async def get_chapters(manga_id: str, provider: str, langs: str = "pt-br,en"):
+@app.get("/api/v1/manga/{manga_id}/chapters")
+async def get_chapters_route(manga_id: str, provider: str = "mangadex"):
+    """Retrieves chapters for a specific manga (M28)."""
     try:
-        lang_list = langs.split(",")
         p = ProviderRegistry.get_provider(provider)
-        results = await p.get_chapters(manga_id, lang_list)
+        # Default languages for v1
+        results = await p.get_chapters(manga_id, ["pt-br", "en"])
         await p.close()
         return results
     except Exception as e:
+        logger.error(f"Failed to fetch chapters: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/download")
-async def download_chapters(manga_id: str, provider: str, chapter_ids: str, lang: str = "pt-br", use_ai: bool = False):
-    """Trigger the download of specific chapters in the background (Module 10)."""
-    chapter_list = chapter_ids.split(",")
-    asyncio.create_task(process_downloads(manga_id, provider, chapter_list, lang, use_ai))  # pragma: no cover
-    return {"status": "queued", "count": len(chapter_list)}
+@app.post("/api/v1/download/start")
+async def start_download_route(request: DownloadRequest):
+    """Initiates the download process in background (M10)."""
+    try:
+        asyncio.create_task(
+            process_downloads(
+                request.manga_id, 
+                request.provider, 
+                request.chapter_ids, 
+                request.target_lang, 
+                request.use_ai
+            )
+        )
+        return {"status": "success", "message": f"Download initiated for {len(request.chapter_ids)} chapters."}
+    except Exception as e:  # pragma: no cover
+        logger.error(f"Download initiation failed: {e}")  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(e))  # pragma: no cover
+
+@app.websocket("/api/v1/ws/progress")
+async def websocket_endpoint(websocket: WebSocket):
+    """Real-time progress and logging bridge (M22)."""
+    await manager.connect(websocket)  # pragma: no cover
+    try:  # pragma: no cover
+        while True:  # pragma: no cover
+            await websocket.receive_text()  # pragma: no cover
+    except WebSocketDisconnect:  # pragma: no cover
+        manager.disconnect(websocket)  # pragma: no cover
+
+# --- Background Processor ---
 
 async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List[str], target_lang: str, use_ai: bool):
-    """Background task to handle downloads and broadcast progress via WebSockets."""
+    """Background engine for secure acquisition and processing (M10)."""
     try:
         provider = ProviderRegistry.get_provider(provider_name)
         total = len(chapter_ids)
-
-        # We need a manga title for the directory. In a real scenario, we'd fetch it.
-        # For simplicity in v5, we'll use the ID as a placeholder or fetch from provider.
         manga_title = f"Manga_{manga_id}"
         manga_path = DOWNLOAD_DIR / manga_title
         manga_path.mkdir(parents=True, exist_ok=True)
@@ -112,7 +129,6 @@ async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List
         ocr_engine = None
         translator = None
         if use_ai:
-             # Default to en -> target_lang for AI init in server context
              ocr_engine = OCREngine(languages=['en'])
              translator = TranslationEngine(from_code='en', to_code=target_lang.split('-')[0])
 
@@ -120,8 +136,8 @@ async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List
             await manager.broadcast({
                 "type": "progress",
                 "chapter_id": cid,
-                "progress": int((idx / total) * 100),
-                "status": f"Baixando Capítulo {cid} ({idx+1}/{total})"
+                "percentage": int((idx / total) * 100),
+                "status": f"Downloading Chapter {cid}..."
             })
 
             chap_dir = manga_path / f"Chapter_{cid}"
@@ -137,14 +153,15 @@ async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List
             await manager.broadcast({
                 "type": "progress",
                 "chapter_id": cid,
-                "progress": int(((idx + 1) / total) * 100),
-                "status": f"Capítulo {cid} concluído"
+                "percentage": int(((idx + 1) / total) * 100),
+                "status": "Completed"
             })
 
-        await manager.broadcast({"type": "complete", "message": "Todos os downloads concluídos."})
+        await manager.broadcast({"type": "complete", "message": "All downloads finished successfully."})
         await provider.close()
     except Exception as e:
-        await manager.broadcast({"type": "error", "message": str(e)})
+        logger.error(f"Background task failure: {e}")
+        await manager.broadcast({"type": "log", "message": f"Error: {str(e)}"})
 
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn

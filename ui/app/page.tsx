@@ -21,12 +21,29 @@ export default function Home() {
     const [results, setResults] = useState<MangaResult[]>([]);
     const [selectedManga, setSelectedManga] = useState<MangaResult | null>(null);
     const [chapters, setChapters] = useState<Chapter[]>([]);
+    const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
+    const [progress, setProgress] = useState<Record<string, { percent: number; status: string }>>({});
     const [loading, setLoading] = useState(false);
     const [loadingChapters, setLoadingChapters] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
+
+        // Module 22: Universal WebSocket Bridge
+        const ws = new WebSocket("ws://localhost:8000/ws");
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "progress") {
+                setProgress(prev => ({
+                    ...prev,
+                    [data.chapter_id]: { percent: data.progress, status: data.status }
+                }));
+            }
+        };
+
+        return () => ws.close();
     }, []);
 
     const handleSearch = async (e: React.FormEvent) => {
@@ -47,6 +64,8 @@ export default function Home() {
     const selectManga = async (manga: MangaResult) => {
         setSelectedManga(manga);
         setLoadingChapters(true);
+        setSelectedChapters(new Set());
+        setProgress({});
         try {
             const resp = await fetch(`http://localhost:8000/chapters?manga_id=${manga.id}&provider=${manga.provider}`);
             const data = await resp.json();
@@ -55,6 +74,23 @@ export default function Home() {
             console.error("Failed to fetch chapters:", err);
         } finally {
             setLoadingChapters(false);
+        }
+    };
+
+    const toggleChapter = (id: string) => {
+        const next = new Set(selectedChapters);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedChapters(next);
+    };
+
+    const handleDownload = async () => {
+        if (selectedChapters.size === 0 || !selectedManga) return;
+        const ids = Array.from(selectedChapters).join(",");
+        try {
+            await fetch(`http://localhost:8000/download?manga_id=${selectedManga.id}&provider=${selectedManga.provider}&chapter_ids=${ids}`);
+        } catch (err) {
+            console.error("Download failed:", err);
         }
     };
 
@@ -132,34 +168,58 @@ export default function Home() {
                     </section>
                 ) : (
                     /* Chapter Selection Section */
-                    <section className="animate-in fade-in slide-in-from-right-8 space-y-6">
+                    <section className="animate-in fade-in slide-in-from-right-8 space-y-6 pb-12">
                         <button onClick={() => setSelectedManga(null)} className="text-zinc-500 hover:text-white flex items-center gap-2 text-sm transition-colors">
                             <span>← Voltar para busca</span>
                         </button>
                         <div className="flex justify-between items-end">
                             <div>
                                 <h2 className="text-3xl font-bold">{selectedManga.title}</h2>
-                                <p className="text-cyan-400 text-sm">{selectedManga.provider.toUpperCase()}</p>
+                                <p className="text-cyan-400 text-sm uppercase tracking-widest">{selectedManga.provider}</p>
                             </div>
-                            <button className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-pink-600 rounded-lg font-bold text-sm">Download Selecionados</button>
+                            <button
+                                onClick={handleDownload}
+                                disabled={selectedChapters.size === 0}
+                                className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-pink-600 rounded-xl font-bold text-sm shadow-xl shadow-cyan-900/20 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                Download ({selectedChapters.size})
+                            </button>
                         </div>
 
                         <div className="glass max-h-[500px] overflow-y-auto divide-y divide-white/5">
                             {loadingChapters ? (
-                                <div className="p-12 text-center text-zinc-500">Carregando capítulos...</div>
+                                <div className="p-12 text-center text-zinc-500 animate-pulse uppercase tracking-[0.2em] text-[10px]">Carregando capítulos...</div>
                             ) : (
                                 chapters.map((c) => (
-                                    <div key={c.id} className="p-4 flex justify-between items-center hover:bg-white/5 transition-colors group">
-                                        <div className="flex items-center gap-4">
-                                            <input type="checkbox" className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-cyan-600 focus:ring-cyan-500" />
-                                            <div>
-                                                <span className="text-sm font-medium">Capítulo {c.number}</span>
-                                                {c.title && <span className="text-zinc-500 text-xs ml-2">- {c.title}</span>}
+                                    <div key={c.id} className="p-4 flex flex-col gap-2 hover:bg-white/5 transition-colors group">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedChapters.has(c.id)}
+                                                    onChange={() => toggleChapter(c.id)}
+                                                    className="w-5 h-5 rounded-lg border-zinc-700 bg-zinc-900 text-cyan-600 focus:ring-cyan-500/50 cursor-pointer"
+                                                />
+                                                <div>
+                                                    <span className="text-sm font-semibold text-zinc-200">Capítulo {c.number}</span>
+                                                    {c.title && <span className="text-zinc-500 text-xs ml-2 italic">— {c.title}</span>}
+                                                </div>
                                             </div>
+                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${c.lang === 'en' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}>
+                                                {c.lang}
+                                            </span>
                                         </div>
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${c.lang === 'en' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}>
-                                            {c.lang}
-                                        </span>
+                                        {progress[c.id] && (
+                                            <div className="pl-9 space-y-1 animate-in fade-in zoom-in duration-300">
+                                                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-cyan-500 to-pink-500 transition-all duration-500"
+                                                        style={{ width: `${progress[c.id].percent}%` }}
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] text-zinc-500 uppercase tracking-tighter">{progress[c.id].status}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}

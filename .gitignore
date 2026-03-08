@@ -10,10 +10,11 @@ logs/audit.log
 Downloads/
 
 # Node / Next.js
-ui/node_modules/
-ui/.next/
-ui/out/
-ui/.vercel
+node_modules/
+**/node_modules/
+src/ui/.next/
+src/ui/out/
+src/ui/.vercel
 .npm
 # Reports & Artifacts
 *.log
@@ -43,3 +44,7 @@ src-tauri/binaries/
 # System
 .DS_Store
 Thumbs.db
+
+# Local Config & Cache
+.cache/
+settings.json

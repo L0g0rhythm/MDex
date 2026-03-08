@@ -46,23 +46,27 @@ class MangaDexProvider(BaseProvider):
         try:
             chapters = []
             offset = 0
-            limit = 100
+            limit = 500
 
             while True:
+                langs = ["pt-br", "en", "ja", "ko", "es", "fr", "ru", "zh"]
                 params = {
                     "limit": limit,
                     "offset": offset,
-                    "translatedLanguage[]": languages,
-                    "order[chapter]": "asc"
+                    "translatedLanguage[]": langs,
+                    "order[chapter]": "asc",
+                    "contentRating[]": ["safe", "suggestive", "erotica", "pornographic"]
                 }
                 data = await self.client.get(f"/manga/{manga_id}/feed", params=params)
 
                 chapters.extend([
                     {
                         "id": c["id"],
-                        "number": c["attributes"]["chapter"],
+                        "chapter": c["attributes"]["chapter"],
                         "title": c["attributes"]["title"],
                         "lang": c["attributes"]["translatedLanguage"],
+                        "pages": c["attributes"]["pages"],
+                        "external_url": c["attributes"].get("externalUrl"),
                         "provider": "mangadex"
                     }
                     for c in data["data"]
@@ -83,6 +87,10 @@ class MangaDexProvider(BaseProvider):
         chapter_hash = data["chapter"]["hash"]
         filenames = data["chapter"]["data"]
         return [f"{base_url}/data/{chapter_hash}/{f}" for f in filenames]
+
+    async def get(self, url: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Generic GET passthrough for the downloader (M10)."""
+        return await self.client.get(url, params=params)
 
     async def close(self):
         await self.client.close()

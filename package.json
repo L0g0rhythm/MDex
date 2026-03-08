@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "tauri": "tauri",
+    "kernel": "powershell -Command \".\\venv\\Scripts\\python -m src.api.server\"",
     "dev": "npm run tauri -- dev",
     "build": "npm run tauri -- build"
   },

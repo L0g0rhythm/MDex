@@ -6,18 +6,22 @@ export const metadata: Metadata = {
     description: "Advanced Manga Downloader with IA Translation",
 };
 
+import { Inter } from "next/font/google";
+import { LanguageProvider } from '../context/LanguageContext'
+
+const inter = Inter({ subsets: ["latin"] });
+
 export default function RootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en">
-            <body className="antialiased selection:bg-cyan-500/30">
-                <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,188,212,0.15),transparent_50%)] pointer-events-none" />
-                <main className="relative min-h-screen">
+        <html lang="en" className="dark">
+            <body className={`${inter.className} bg-[#020617] text-slate-200 antialiased selection:bg-[#00f2ff]/30 selection:text-[#00f2ff]`}>
+                <LanguageProvider>
                     {children}
-                </main>
+                </LanguageProvider>
             </body>
         </html>
     );

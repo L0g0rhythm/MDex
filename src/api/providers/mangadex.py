@@ -16,13 +16,27 @@ class MangaDexProvider(BaseProvider):
 
     async def search(self, query: str) -> List[Dict[str, Any]]:
         try:
-            params = {"title": query, "limit": 10}
+            params = {"title": query, "limit": 10, "includes[]": ["cover_art"]}
             response_data = await self.client.get("/manga", params=params)
             data = response_data["data"]
-            return [
-                {"id": m["id"], "title": m["attributes"]["title"].get("en") or m["attributes"]["title"].get("ja-ro"), "provider": "mangadex"}
-                for m in data
-            ]
+            results = []
+            for m in data:
+                cover_file = ""
+                for rel in m.get("relationships", []):
+                    if rel["type"] == "cover_art" and "attributes" in rel:
+                        cover_file = rel["attributes"]["fileName"]
+                
+                cover_url = ""
+                if cover_file:
+                    cover_url = f"https://uploads.mangadex.org/covers/{m['id']}/{cover_file}"
+
+                results.append({
+                    "id": m["id"],
+                    "title": m["attributes"]["title"].get("en") or m["attributes"]["title"].get("ja-ro"),
+                    "cover": cover_url,
+                    "provider": "mangadex"
+                })
+            return results
         except Exception as e:
             logging.error(f"MangaDex Search Failure: {e}")
             return []

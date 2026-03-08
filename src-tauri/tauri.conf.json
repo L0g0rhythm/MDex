@@ -1,6 +1,8 @@
 {
-  "project_name": "mdex",
-  "identifier": "com.mdex.singularity",
+  "package": {
+    "productName": "mdex",
+    "version": "6.0.0"
+  },
   "build": {
     "beforeDevCommand": "npm --prefix src/ui run dev",
     "beforeBuildCommand": "npm --prefix src/ui run build",
@@ -27,9 +29,9 @@
         "open": true
       }
     },
-    "window": [
+    "windows": [
       {
-        "title": "MDex Singularity Omni-v5",
+        "title": "MDex Singularity Omni-v6",
         "width": 1024,
         "height": 768,
         "resizable": true,

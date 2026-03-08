@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+ENV/
+env/
+.env
+logs/audit.log
+Downloads/
+
+# Node / Next.js
+ui/node_modules/
+ui/.next/
+ui/out/
+ui/.vercel
+.npm
+*.log
+
+# Tauri
+src-tauri/target/
+src-tauri/binaries/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System
+.DS_Store
+Thumbs.db

@@ -1,4 +1,4 @@
-from src.core.config import API_BASE_URL
+from src.core.config import MANGADEX_API_URL
 
 # Localization strings migrated from MDex.py
 STRINGS = {
@@ -54,3 +54,8 @@ STRINGS = {
         "ai_initializing": "🧠 Inicializando Motores de IA (Local)...",
     }
 }
+
+def get_string(key: str, lang: str = "en") -> str:
+    """Get a localized string with fallback to English (Module 12)."""
+    lang_strings = STRINGS.get(lang.lower(), STRINGS["en"])
+    return lang_strings.get(key, STRINGS["en"].get(key, key))

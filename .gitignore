@@ -16,6 +16,7 @@ ui/out/
 ui/.vercel
 .npm
 *.log
+*.txt
 
 # Tauri
 src-tauri/target/

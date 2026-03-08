@@ -1,5 +1,5 @@
 import httpx
-from src.core.config import API_BASE_URL, MAX_RETRIES, RETRY_BACKOFF_FACTOR
+from src.core.config import MANGADEX_API_URL, MAX_RETRIES, RETRY_BACKOFF_FACTOR
 from src.core.rate_limiter import RateLimiter
 import asyncio
 import logging
@@ -7,7 +7,7 @@ import logging
 class MangaDexClient:
     def __init__(self, concurrent_limit: int = 5):
         self.client = httpx.AsyncClient(
-            base_url=API_BASE_URL,
+            base_url=MANGADEX_API_URL,
             timeout=30.0,
             headers={"User-Agent": "MDex-Singularity/4.0 (2026 Audited)"}
         )

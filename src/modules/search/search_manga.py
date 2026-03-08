@@ -1,7 +1,7 @@
 from thefuzz import fuzz
 from src.api.mangadex_client import MangaDexClient
 
-async def search_manga_by_title(title: str, client: MangaDexClient):
+async def search_manga(title: str, client: MangaDexClient):
     """Searches for a manga by title via MangaDex API."""
     params = {"title": title, "limit": 10, "order[relevance]": "desc"}
     data = await client.get("/manga", params=params)

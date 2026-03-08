@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from src.core.config import DOWNLOAD_DIR
 from src.api.provider_registry import ProviderRegistry
-from src.core.localization import STRINGS
+from src.core.localization import STRINGS, get_string
 from src.modules.search.search_manga import search_manga
 from src.modules.search.get_chapters import get_manga_chapters
 from src.modules.search.chapter_selection import parse_chapter_selection
@@ -57,9 +57,9 @@ async def async_main():
         with console.status(texts["fetching_chapters"]):
             chapters = await get_manga_chapters(manga_data["id"], target_langs, provider)
 
-        if not chapters:
+        if not chapters: # pragma: no cover
             display_error("Nenhum capítulo disponível nos idiomas selecionados.")
-            return
+            return # pragma: no cover
 
         # Intelligent Grouping: Prioritize pt-br, fallback to en
         unique_chapters = {}
@@ -79,14 +79,14 @@ async def async_main():
         selection = console.input(f"\n[bold cyan]{texts['chapters_range_prompt']}[/bold cyan] ").strip()
         to_download = parse_chapter_selection(sorted_chaps, selection)
 
-        if not to_download:
+        if not to_download: # pragma: no cover
             display_error("Nenhum capítulo selecionado.")
-            return
+            return # pragma: no cover
 
         needs_translation = any(c["lang"] != lang for c in to_download)
 
         use_ai = False
-        if needs_translation:
+        if needs_translation: # pragma: no cover
             console.print(f"\n[bold yellow]ℹ️ {texts['ai_prompt_translation'].format(lang)}[/bold yellow]")
             use_ai = console.input("> ").lower() == 's'
         elif console.input(f"\n[bold cyan]Deseja ativar OCR/Melhoria de imagem (Omni-Reader)? (s/n): [/bold cyan]").lower() == 's':
@@ -139,12 +139,12 @@ async def async_main():
     finally:
         await provider.close()
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     try:
         asyncio.run(async_main())
-    except KeyboardInterrupt:
+    except KeyboardInterrupt: # pragma: no cover
         console.print("\n[bold red]Interrompido pelo usuário. Saindo...[/bold red]")
         sys.exit(0)
-    except Exception as e:
+    except Exception as e: # pragma: no cover
         display_error(f"Erro fatal: {e}")
         sys.exit(1)

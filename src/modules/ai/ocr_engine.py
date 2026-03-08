@@ -29,5 +29,6 @@ class OCREngine:
                 for res in results
             ]
         except Exception as e:
-            logging.error(f"OCR Error on {image_path.name}: {e}")
+            msg = f"OCR Error on {Path(image_path).name}: {e}"
+            logging.error(msg)
             return []

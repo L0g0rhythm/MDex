@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DOWNLOAD_DIR = BASE_DIR / "Downloads"
 
 # --- MangaDex API ---
-API_BASE_URL = "https://api.mangadex.org"
+MANGADEX_API_URL = "https://api.mangadex.org"
 AUTH_API_URL = "https://auth.mangadex.org"
 
 # --- Performance & Safety ---
@@ -14,6 +14,7 @@ MAX_CONCURRENT_DOWNLOADS = 5  # Semaphore limit
 MAX_RETRIES = 5
 RETRY_BACKOFF_FACTOR = 1.5
 CHAPTER_DOWNLOAD_DELAY = 0.3  # Seconds between chapter metadata calls
+CHAPTERS_PER_BATCH = 100 # Standard batch for pagination
 
 # --- PDF Configuration ---
 ASSUMED_DPI = 72

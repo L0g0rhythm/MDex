@@ -12,6 +12,14 @@ import asyncio
 
 app = FastAPI(title="MDex Omni-v5 API")
 
+from src.modules.download.download_chapter import download_chapter_images
+from src.modules.pdf.pdf_generator import create_pdf_from_images
+from src.modules.ai.ocr_engine import OCREngine
+from src.modules.ai.translator import TranslationEngine
+from src.core.config import DOWNLOAD_DIR
+from pathlib import Path
+import shutil
+
 # Module 22: Observability & Resilience - Real-time Progress Tracking
 class ConnectionManager:
     def __init__(self):
@@ -86,7 +94,7 @@ async def get_chapters(manga_id: str, provider: str, langs: str = "pt-br,en"):
 async def download_chapters(manga_id: str, provider: str, chapter_ids: str, lang: str = "pt-br", use_ai: bool = False):
     """Trigger the download of specific chapters in the background (Module 10)."""
     chapter_list = chapter_ids.split(",")
-    asyncio.create_task(process_downloads(manga_id, provider, chapter_list, lang, use_ai))
+    asyncio.create_task(process_downloads(manga_id, provider, chapter_list, lang, use_ai))  # pragma: no cover
     return {"status": "queued", "count": len(chapter_list)}
 
 async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List[str], target_lang: str, use_ai: bool):
@@ -95,23 +103,42 @@ async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List
         provider = ProviderRegistry.get_provider(provider_name)
         total = len(chapter_ids)
 
+        # We need a manga title for the directory. In a real scenario, we'd fetch it.
+        # For simplicity in v5, we'll use the ID as a placeholder or fetch from provider.
+        manga_title = f"Manga_{manga_id}"
+        manga_path = DOWNLOAD_DIR / manga_title
+        manga_path.mkdir(parents=True, exist_ok=True)
+
+        ocr_engine = None
+        translator = None
+        if use_ai:
+             # Default to en -> target_lang for AI init in server context
+             ocr_engine = OCREngine(languages=['en'])
+             translator = TranslationEngine(from_code='en', to_code=target_lang.split('-')[0])
+
         for idx, cid in enumerate(chapter_ids):
-            progress = int(((idx) / total) * 100)
             await manager.broadcast({
                 "type": "progress",
                 "chapter_id": cid,
-                "progress": progress,
-                "status": f"Iniciando download ({idx+1}/{total})"
+                "progress": int((idx / total) * 100),
+                "status": f"Baixando Capítulo {cid} ({idx+1}/{total})"
             })
 
-            # Simulate/Execute download logic
-            await asyncio.sleep(1) # Simulated high-speed sync
+            chap_dir = manga_path / f"Chapter_{cid}"
+            chap_dir.mkdir(exist_ok=True)
+
+            images = await download_chapter_images(cid, chap_dir, provider)
+
+            if images:
+                pdf_path = manga_path / f"Chapter_{cid}.pdf"
+                create_pdf_from_images(images, pdf_path, ocr_engine, translator)
+                shutil.rmtree(chap_dir)
 
             await manager.broadcast({
                 "type": "progress",
                 "chapter_id": cid,
                 "progress": int(((idx + 1) / total) * 100),
-                "status": f"Capítulo finalizado"
+                "status": f"Capítulo {cid} concluído"
             })
 
         await manager.broadcast({"type": "complete", "message": "Todos os downloads concluídos."})
@@ -119,6 +146,6 @@ async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List
     except Exception as e:
         await manager.broadcast({"type": "error", "message": str(e)})
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

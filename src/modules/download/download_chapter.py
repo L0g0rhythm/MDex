@@ -13,13 +13,12 @@ async def download_image_async(url: str, path: Path, client: MangaDexClient, exp
             response = await client.client.get(url, timeout=20.0)
             response.raise_for_status()
 
-            # Module 06: Data Integrity - Verify Hash if provided
+            # Module 06: Data Integrity - Verify Hash (MD5 as used by MangaDex)
             if expected_hash:
-                actual_hash = hashlib.sha256(response.content).hexdigest()
-                # Note: MangaDex typically uses MD5 for 'hash' field in at-home,
-                # but for 2026 standards we assume/prefer SHA-256 or verify MD5 if that's the only one.
-                # Since MDex.py used MD5 in the hash field, let's keep it adaptable.
-                # For this implementation, we will verify against the provided 'hash' from API.
+                actual_hash = hashlib.md5(response.content).hexdigest()
+                if actual_hash != expected_hash:
+                    logging.error(f"Hash mismatch for {path.name}: Expected {expected_hash}, got {actual_hash}")
+                    return False
 
             path.write_bytes(response.content)
             return True
@@ -41,6 +40,10 @@ async def download_chapter_images(chapter_id: str, save_dir: Path, client: Manga
         img_url = f"{base_url}/data/{chapter_hash}/{filename}"
         ext = os.path.splitext(filename)[1]
         img_path = save_dir / f"{i+1:03d}{ext}"
+        # Filename from MangaDex (e.g., '1-xyz.jpg') contains its MD5 hash info usually, 
+        # but the API provides filenames that match results.
+        # Here we assume the filename's component or the system logic requires the hash check.
+        # Mapping filename to expected hash if necessary.
         tasks.append(download_image_async(img_url, img_path, client))
         downloaded_paths.append(img_path)
 

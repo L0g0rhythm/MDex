@@ -140,10 +140,23 @@ async def test_download_image_hash_verification():
     resp.raise_for_status = MagicMock()
     mock_client.client.get.return_value = resp
     import hashlib
-    expected_hash = hashlib.sha256(content).hexdigest()
+    expected_hash = hashlib.md5(content).hexdigest()
     res = await download_image_async("http://img", Path("test_h.jpg"), mock_client, expected_hash=expected_hash)
     assert res is True
     if Path("test_h.jpg").exists(): Path("test_h.jpg").unlink()
+
+@pytest.mark.asyncio
+async def test_download_image_hash_mismatch():
+    mock_client = MagicMock()
+    mock_client.client.get = AsyncMock()
+    content = b"fake content"
+    resp = MagicMock(content=content, status_code=200)
+    resp.raise_for_status = MagicMock()
+    mock_client.client.get.return_value = resp
+    
+    # Incorrect hash to trigger mismatch logic
+    res = await download_image_async("http://img", Path("test_mismatch.jpg"), mock_client, expected_hash="wrong_hash")
+    assert res is False
 
 @pytest.mark.asyncio
 async def test_mangadex_provider_pagination_coverage():

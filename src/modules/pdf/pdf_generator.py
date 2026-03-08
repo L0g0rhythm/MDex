@@ -18,15 +18,17 @@ def create_pdf_from_images(
             if img.width > 10000 or img.height > 10000:
                 continue
 
-            # Module 25: AI Privacy & Security
-            img = img.convert("RGB")
+            # Module 25: AI Privacy & Security - Strip metadata by creating a new image (M25)
+            # This ensures no EXIF or other hidden data is leaked in the final PDF
+            img_clean = Image.new("RGB", img.size)
+            img_clean.paste(img.convert("RGB"))
 
             if ocr_engine and translator:
                 # 1. OCR Extraction
                 ocr_results = ocr_engine.extract_text(img_path)
 
                 # 2. Translation & Overlay
-                draw = ImageDraw.Draw(img)
+                draw = ImageDraw.Draw(img_clean)
                 # Note: For production, we would use a more sophisticated 'inpainting' or better font handling.
                 # For this 'Omni-v5' foundation, we use standard PIL drawing.
                 for res in ocr_results:
@@ -43,7 +45,7 @@ def create_pdf_from_images(
                     draw.rectangle([left, top, right, bottom], fill="white")
                     draw.text((left, top), translated_text, fill="black")
 
-            w_px, h_px = img.size
+            w_px, h_px = img_clean.size
             dpi = img.info.get('dpi', (ASSUMED_DPI, ASSUMED_DPI))
             w_pt = w_px * 72.0 / dpi[0]
             h_pt = h_px * 72.0 / dpi[1]
@@ -53,7 +55,7 @@ def create_pdf_from_images(
 
             # Save temporary "clean" image for PDF inclusion
             temp_img_path = img_path.with_suffix(".tmp.jpg")
-            img.save(temp_img_path, "JPEG", quality=95)
+            img_clean.save(temp_img_path, "JPEG", quality=95)
             pdf.image(temp_img_path, x=0, y=0, w=w_pt, h=h_pt)
 
             if temp_img_path.exists():

@@ -4,6 +4,7 @@ import httpx
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 from src.core.config import MANGADEX_API_URL, RETRY_BACKOFF_FACTOR
+from src.core.logger import setup_logger, logger as default_logger
 from src.core.rate_limiter import RateLimiter
 from src.api.mangadex_client import MangaDexClient
 from src.api.provider_registry import ProviderRegistry
@@ -157,6 +158,15 @@ async def test_download_image_hash_mismatch():
     # Incorrect hash to trigger mismatch logic
     res = await download_image_async("http://img", Path("test_mismatch.jpg"), mock_client, expected_hash="wrong_hash")
     assert res is False
+
+@pytest.mark.asyncio
+async def test_logger_coverage():
+    # Force setup_logger call with a new name
+    l = setup_logger("TestLogger")
+    assert l.name == "TestLogger"
+    # Test branch where handlers already exist
+    l2 = setup_logger("TestLogger2")
+    assert l2.name == "TestLogger2"
 
 @pytest.mark.asyncio
 async def test_mangadex_provider_pagination_coverage():

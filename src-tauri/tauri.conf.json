@@ -2,10 +2,10 @@
   "project_name": "mdex",
   "identifier": "com.mdex.singularity",
   "build": {
-    "beforeDevCommand": "npm --prefix ui run dev",
-    "beforeBuildCommand": "npm --prefix ui run build",
+    "beforeDevCommand": "npm --prefix src/ui run dev",
+    "beforeBuildCommand": "npm --prefix src/ui run build",
     "devPath": "http://localhost:3000",
-    "distDir": "ui/out"
+    "distDir": "../src/ui/out"
   },
   "tauri": {
     "bundle": {

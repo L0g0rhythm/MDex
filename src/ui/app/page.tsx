@@ -152,7 +152,7 @@ export default function Home() {
                 >
                   <div className="aspect-[3/4] rounded-lg overflow-hidden relative">
                     <img 
-                      src={manga.cover || '/placeholder.png'} 
+                      src={`http://localhost:8000/api/v1/manga/proxy/cover?url=${encodeURIComponent(manga.cover || '')}`} 
                       alt={manga.title} 
                       className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
@@ -184,7 +184,11 @@ export default function Home() {
               </div>
 
               <div className="flex gap-6 items-start">
-                <img src={selectedManga.cover} className="w-32 h-44 object-cover rounded-xl shadow-2xl" alt="" />
+                <img 
+                  src={`http://localhost:8000/api/v1/manga/proxy/cover?url=${encodeURIComponent(selectedManga.cover || '')}`} 
+                  className="w-32 h-44 object-cover rounded-xl shadow-2xl" 
+                  alt="" 
+                />
                 <div>
                   <h2 className="text-2xl font-bold neon-cyan mb-2">{selectedManga.title}</h2>
                   <p className="text-gray-400 text-sm line-clamp-4">{selectedManga.description}</p>

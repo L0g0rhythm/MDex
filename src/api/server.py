@@ -163,6 +163,19 @@ async def process_downloads(manga_id: str, provider_name: str, chapter_ids: List
         logger.error(f"Background task failure: {e}")
         await manager.broadcast({"type": "log", "message": f"Error: {str(e)}"})
 
+@app.get("/api/v1/manga/proxy/cover")
+async def proxy_cover_route(url: str):
+    """Proxies manga covers to bypass CORS/CSP restrictions (M13)."""
+    import httpx
+    from fastapi.responses import Response
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(url, timeout=10.0)
+            return Response(content=resp.content, media_type=resp.headers.get("content-type", "image/jpeg"))
+        except Exception as e:
+            logger.error(f"Cover proxy failed for {url}: {e}")
+            raise HTTPException(status_code=502, detail="Failed to fetch cover")
+
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

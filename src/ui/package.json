@@ -23,6 +23,7 @@
     "eslint": "latest",
     "eslint-config-next": "latest",
     "postcss": "latest",
+    "@tailwindcss/postcss": "latest",
     "tailwindcss": "latest",
     "typescript": "latest"
   }
